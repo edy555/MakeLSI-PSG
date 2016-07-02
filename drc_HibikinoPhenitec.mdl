@@ -1,0 +1,141 @@
+;
+; DRC command file for standard CMOS É… rule (simple version)
+;     25-March-2001 by K. ASADA
+;     ([G] stands for GEX integer grid)
+;
+;   (2014/12/25) modified for Kitakyushu-Hibikino process by J.Akita
+;   (2015/04/17) bug fix to check act (thanks ksmakoto)
+;   (2016/06/09) added VIA rule by C.Takahashi, modifies message by J.Akita
+;   (2016/06/14) added Act-Poly rule (by J.Akita)
+;
+#size	1.0 um			; Phisical size of UNIT in GeX (overidden by WGEX's grid size)
+;
+#define NWL 1  ; N-Well
+#define PWL 2  ; P-Well
+#define CST 3  ; ChannelStop
+#define ACT 4  ; Active
+#define VTN 5  ; Vth-N (can be generated from N-Select)
+#define VTP 6  ; Vth-P (can be generated from P-Select)
+#define POL 7  ; Poly
+#define NSL 8  ; N-Select
+#define PSL 9  ; P-Select
+#define CNA 10 ; Contact-Active
+#define CNP 11 ; Contact-Poly
+#define ML1 12 ; Metal1
+#define VIA 13 ; VIA
+#define ML2 14 ; Metal2
+; layers for working
+#define	NMOS 15 ; N-FET Channel layer.
+#define	PMOS 16 ; P-FET Channel layer.
+#define CDN     17		; N-diffusion
+#define CDP     18		; P-diffusion
+#define	CNO  19
+#define	CNQ  20
+#define	VIO  21
+#define	EXT  22
+#define CSO  23
+#define ACO  24
+#define AVI  25
+;
+; modified 2015/04/17: check ACT gap prior to CDN/CDP generation
+#for (ACT) check_gap 4 [G] to (ACT)		; N/P-Diffusion
+#for (ACT) check_width 4 [G] and_gap 4 [G]	
+;
+;
+;
+#for (NSL & ACT) convert (ACT) to (CDN)	; N-diffusion
+#for (PSL & ACT) convert (ACT) to (CDP)	; P-diffusion
+;
+; DRC-1		Minimum gap
+;
+#for (POL) check_gap 2 [G] to (POL)		; Polysilicon
+#for (ML1) check_gap 4 [G] to (ML1)		; 1-st Metal
+#for (ML2) check_gap 4 [G] to (ML2)		; 2-nd Metal
+#for (CNA) check_gap 2 [G] to (CNA)		; contact hole
+#for (CNP) check_gap 2 [G] to (CNP)		; contact hole
+#for (VIA) check_gap 4 [G] to (VIA)		; thru hole
+#for (POL) check_gap 2 [G] to (CDN)		; Poly-Act(N) gap
+#for (POL) check_gap 2 [G] to (CDP)		; Poly-Act(P) gap
+;
+;  Conversion for FET Channel Regions.
+;
+#for (CDN & POL) convert (CDN) to (NMOS)	; N-FET
+#for (CDP & POL) convert (CDP) to (PMOS)	; P-FET
+;
+; DRC-2		FET - Contact gap
+;
+;#for (PMOS) check_gap 4 [G] to (CCH)		; FET-contact hole
+;#for (NMOS) check_gap 4 [G] to (CCH)		; FET-contact hole
+;
+; DRC-3		Minimum Width
+;
+#for (NWL) check_width 6 [G] and_gap 4 [G]	
+#for (PWL) check_width 6 [G] and_gap 4 [G]	
+#for (CST) check_width 4 [G] and_gap 4 [G]	
+#for (NSL) check_width 8 [G] and_gap 0 [G]	
+#for (PSL) check_width 8 [G] and_gap 0 [G]	
+#for (POL) check_width 2 [G] and_gap 2 [G]
+#for (ML1) check_width 6 [G] and_gap 4 [G]
+#for (ML2) check_width 6 [G] and_gap 4 [G]
+#for (VIA) check_width 4 [G] and_gap 4 [G]
+#for (CNA) check_width 2 [G] and_gap 2 [G]
+#for (CNP) check_width 2 [G] and_gap 2 [G]
+;
+; DRC-4		Contact/Thru-hole Overlap
+;
+#for (CNA)	make_oversize 2 [G] as (CNO)
+#for (CNP)	make_oversize 2 [G] as (CNQ)
+#for (CNO & !ML1) warning  ContactA_Overlape_Error_M1
+#for (CNQ & !ML1) warning  ContactP_Overlap_Error_M1
+#for (CNO & !CDN & !CDP) warning  Contact_Overlap_Err_ACT
+#for (CNQ & !POL) warning  Contact_Overlap_Err_POL
+;
+#for (VIA)	make_oversize 2 [G] as (VIO)
+#for (VIO & !ML1) warning  Thru_hole_Overlap_Err_M1
+#for (VIO & !ML2) warning  Thru_hole_Overlap_Err_M2
+;
+; DRC-5		FET gate extention
+;
+#for (NMOS)	make_extension 2 [G] along (CDN) as (EXT)
+#for (EXT & !POL) warning Gate_Extention_Err_N
+#for (PMOS)	make_extension 2 [G] along (CDP) as (EXT)
+#for (EXT & !POL) warning Gate_Extention_Err_P
+;
+; Diffusion(Act)-Select
+;
+#for (CDN)	make_oversize 2 [G] as (ACO)
+#for (ACO & !NSL) warning  Nsel_Nact_Overlap_Error
+#for (CDP)	make_oversize 2 [G] as (ACO)
+#for (ACO & !PSL) warning  Psel_Pact_Overlap_Error
+;
+; Diffusion(Act)-ChannelStop
+;
+#for (CDN)	make_oversize 3 [G] as (ACO)
+#for (ACO & !CST) warning  ChStp_Nact_Overlap_Error
+#for (CDP)	make_oversize 3 [G] as (ACO)
+#for (ACO & !CST) warning  ChStp_Pact_Overlap_Error
+;
+; Well-ChannelStop
+;
+#for (CST)	make_oversize 2 [G] as (CSO)
+#for (CSO & !NWL & !PWL) warning  Well_ChStp_Overlap_Error
+;
+; N-Select/P-select overlap
+;
+#for (NSL & PSL) warning  Nsel_Psel_Overlap_Error
+;
+; Active without Nsel/Psel
+;
+#for (ACT) warning  Isolated_Active_Error
+;
+; modified VIA overlap error
+; By Chikau Takahashi 2016.4.25
+;
+#for (VIA)	make_oversize 1 [G] as (AVI)Å@Å@
+#for (AVI & POL) warning  VIA_POL_Overlap
+#for (AVI & NWL) warning  VIA_NWL_Overlap
+#for (AVI & PWL) warning  VIA_PWL_Overlap
+#for (AVI & CST) warning  VIA_CST_Overlap
+#for (AVI & ACT) warning  VIA_ACT_Overlap
+#for (AVI & CNP) warning  VIA_CNP_Overlap
+;
